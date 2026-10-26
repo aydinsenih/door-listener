@@ -8,8 +8,21 @@ import SwiftUI
 /// The Start/Stop control with a running timer while recording.
 struct RecorderHeader: View {
     @Environment(RecordingStore.self) private var store
+    @AppStorage(RecordingStore.echoCancellationKey) private var echoCancellation = true
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            controls
+            Toggle("Remove speaker sound from mic (echo cancellation)", isOn: $echoCancellation)
+                .toggleStyle(.checkbox)
+                .font(.caption)
+                .disabled(store.isRecording)
+                .help("Turn off if you use headphones or your voice sounds muffled.")
+        }
+        .padding()
+    }
+
+    private var controls: some View {
         HStack(spacing: 16) {
             Button {
                 store.toggle()
@@ -40,7 +53,6 @@ struct RecorderHeader: View {
             }
             Spacer()
         }
-        .padding()
     }
 
     private func sourcesDescription(for session: RecordingSession) -> String {

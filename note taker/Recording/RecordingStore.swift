@@ -17,6 +17,8 @@ final class RecordingStore {
 
     var isRecording: Bool { activeSession != nil }
 
+    static let echoCancellationKey = "echoCancellation"
+
     @ObservationIgnored private var microphone: MicrophoneRecorder?
     @ObservationIgnored private var systemAudio: SystemAudioRecorder?
     @ObservationIgnored let rootURL: URL
@@ -73,7 +75,10 @@ final class RecordingStore {
 
         let microphone = MicrophoneRecorder()
         do {
-            try microphone.start(writingTo: folder.appendingPathComponent(RecordingSession.micFileName))
+            try microphone.start(
+                writingTo: folder.appendingPathComponent(RecordingSession.micFileName),
+                echoCancellation: UserDefaults.standard.object(forKey: Self.echoCancellationKey) as? Bool ?? true
+            )
             self.microphone = microphone
             started.hasMicrophone = true
         } catch {
