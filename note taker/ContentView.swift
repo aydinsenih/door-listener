@@ -8,17 +8,40 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(RecordingStore.self) private var store
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        VStack(spacing: 0) {
+            RecorderHeader()
+            Divider()
+            if store.sessions.isEmpty {
+                ContentUnavailableView(
+                    "No recordings yet",
+                    systemImage: "waveform",
+                    description: Text("Press Start Listening to record your microphone and your Mac's audio.")
+                )
+            } else {
+                List(store.sessions) { session in
+                    SessionRow(session: session)
+                }
+            }
         }
-        .padding()
+        .frame(minWidth: 440, minHeight: 360)
+        .alert(
+            "Recording problem",
+            isPresented: Binding(
+                get: { store.errorMessage != nil },
+                set: { if !$0 { store.errorMessage = nil } }
+            )
+        ) {
+            Button("OK") {}
+        } message: {
+            Text(store.errorMessage ?? "")
+        }
     }
 }
 
 #Preview {
     ContentView()
+        .environment(RecordingStore())
 }
