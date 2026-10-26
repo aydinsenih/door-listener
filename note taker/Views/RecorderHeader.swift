@@ -8,12 +8,12 @@ import SwiftUI
 /// The Start/Stop control with a running timer while recording.
 struct RecorderHeader: View {
     @Environment(RecordingStore.self) private var store
-    @AppStorage(RecordingStore.echoCancellationKey) private var echoCancellation = true
+    @AppStorage(RecordingStore.echoCancellationKey) private var echoCancellation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             controls
-            Toggle("Remove speaker sound from mic (echo cancellation)", isOn: $echoCancellation)
+            Toggle("Remove speaker sound from mic (experimental, stops system audio capture)", isOn: $echoCancellation)
                 .toggleStyle(.checkbox)
                 .font(.caption)
                 .disabled(store.isRecording)

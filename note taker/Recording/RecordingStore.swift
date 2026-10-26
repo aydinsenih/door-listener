@@ -88,7 +88,7 @@ final class RecordingStore {
         do {
             try microphone.start(
                 writingTo: folder.appendingPathComponent(RecordingSession.micFileName),
-                echoCancellation: UserDefaults.standard.object(forKey: Self.echoCancellationKey) as? Bool ?? true
+                echoCancellation: UserDefaults.standard.object(forKey: Self.echoCancellationKey) as? Bool ?? false
             )
             self.microphone = microphone
             started.hasMicrophone = true
