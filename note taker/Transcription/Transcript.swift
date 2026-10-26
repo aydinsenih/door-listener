@@ -130,6 +130,8 @@ nonisolated struct Transcript: Codable, Sendable {
 nonisolated enum TranscriptionError: LocalizedError {
     case appleLanguageUnsupported(String)
     case noAudio
+    case vadModelMissing
+    case vadFailed
 
     var errorDescription: String? {
         switch self {
@@ -137,6 +139,10 @@ nonisolated enum TranscriptionError: LocalizedError {
             "Apple Speech doesn't support \(language) on this Mac. Switch to Whisper in Settings."
         case .noAudio:
             "This recording has no audio tracks to transcribe."
+        case .vadModelMissing:
+            "The voice detection model is missing from the app. Reinstall Door Listener."
+        case .vadFailed:
+            "Voice detection failed on this audio."
         }
     }
 }

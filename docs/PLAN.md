@@ -9,17 +9,28 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
   two separate tracks: `mic.m4a` and `system.m4a`.
 - Sessions saved in `~/Library/Application Support/Door Listener/Recordings/<date>/`.
 
-## Step 2: Transcribe on-device after stopping
+## Step 2: Transcribe on-device, live while recording
 - Engine picker: Apple Speech (SpeechAnalyzer) or Whisper (WhisperKit, large-v3-turbo).
 - Whisper is the recommended default for mixed Turkish and English.
-- Each track transcribed separately, merged by timestamp.
-- Runs automatically when a recording stops; "Transcribe Again" re-runs it.
+- Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)
+  as it is captured. Silence never reaches the speech model, which saves CPU and
+  stops Whisper from inventing phrases in quiet parts.
+- An utterance ends after a 0.5 s pause (0.2 s once it is over 12 s long) and is cut
+  at its quietest point if it reaches 20 s. Each one is transcribed right away, so
+  lines show up in the open session while recording.
+- The speech model sits behind `SpeechEngine` / `SpeechStream`, so another model
+  (including one that streams natively) can be dropped in.
+- Each track transcribed separately, merged by timestamp. The transcript is saved
+  as it grows.
+- "Transcribe Again" runs the same VAD over the saved files. If live transcription
+  fails, the saved audio is transcribed after stopping instead.
 - Speaker bleed filter (see Step 3) is applied in the merge.
 
 ## Step 3: Speaker labels and transcript viewer
 - Mic track is always "Me".
 - System track split into Speaker 1, 2, 3... with on-device diarization
-  (SpeakerKit, Pyannote, from the same package as WhisperKit). Speakers are numbered
+  (SpeakerKit, Pyannote, from the same package as WhisperKit). It runs once over the
+  whole system track after recording stops; until then lines read "Others". Speakers are numbered
   in the order they first talk. Whisper word timings split a segment where the
   speaker changes. If diarization fails, the system track falls back to "Others".
 - Mic bleed: without headphones the mic also picks up what the speakers play.

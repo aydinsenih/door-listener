@@ -21,7 +21,10 @@ final class RecordingStore {
 
     @ObservationIgnored private var microphone: MicrophoneRecorder?
     @ObservationIgnored private var systemAudio: SystemAudioRecorder?
+    @ObservationIgnored private var liveTranscription: LiveTranscription?
     @ObservationIgnored let rootURL: URL
+    /// Called as a recording starts, to transcribe it while it records.
+    @ObservationIgnored var startLiveTranscription: ((RecordingSession, URL) -> LiveTranscription?)?
     /// Called after a recording stops and its files are finalized.
     @ObservationIgnored var onSessionFinished: ((RecordingSession) -> Void)?
 
@@ -74,12 +77,16 @@ final class RecordingStore {
 
         var started = session
         var problems: [String] = []
+        let live = startLiveTranscription?(session, folder)
 
         // System audio starts first: turning on the mic's voice processing reconfigures
         // the output device, and the tap has to be in place before that happens.
         let systemAudio = SystemAudioRecorder()
         do {
-            try systemAudio.start(writingTo: folder.appendingPathComponent(RecordingSession.systemFileName))
+            try systemAudio.start(
+                writingTo: folder.appendingPathComponent(RecordingSession.systemFileName),
+                live: live?.systemAudio
+            )
             self.systemAudio = systemAudio
             started.hasSystemAudio = true
         } catch {
@@ -90,7 +97,8 @@ final class RecordingStore {
         do {
             try microphone.start(
                 writingTo: folder.appendingPathComponent(RecordingSession.micFileName),
-                echoCancellation: UserDefaults.standard.object(forKey: Self.echoCancellationKey) as? Bool ?? false
+                echoCancellation: UserDefaults.standard.object(forKey: Self.echoCancellationKey) as? Bool ?? false,
+                live: live?.microphone
             )
             self.microphone = microphone
             started.hasMicrophone = true
@@ -102,11 +110,15 @@ final class RecordingStore {
             errorMessage = problems.joined(separator: "\n\n")
         }
         guard started.hasMicrophone || started.hasSystemAudio else {
+            live?.finish(started)
             try? FileManager.default.removeItem(at: folder)
             return
         }
 
+        liveTranscription = live
         activeSession = started
+        // Listed right away, so its transcript can be followed while it records.
+        sessions.insert(started, at: 0)
         save(started)
     }
 
@@ -120,7 +132,13 @@ final class RecordingStore {
         session.endedAt = .now
         save(session)
         activeSession = nil
-        sessions.insert(session, at: 0)
+        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[index] = session
+        } else {
+            sessions.insert(session, at: 0)
+        }
+        liveTranscription?.finish(session)
+        liveTranscription = nil
         onSessionFinished?(session)
     }
 

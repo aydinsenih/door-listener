@@ -12,7 +12,8 @@ nonisolated final class MicrophoneRecorder: @unchecked Sendable {
 
     /// Starts recording. With `echoCancellation` on, macOS voice processing removes
     /// what the speakers play from the mic signal, so call audio doesn't bleed into "Me".
-    func start(writingTo url: URL, echoCancellation: Bool) throws {
+    /// `live` also gets every buffer, for transcribing while recording.
+    func start(writingTo url: URL, echoCancellation: Bool, live: LiveTrackProcessor?) throws {
         let input = engine.inputNode
         if echoCancellation {
             do {
@@ -47,9 +48,11 @@ nonisolated final class MicrophoneRecorder: @unchecked Sendable {
             if keepFirstChannelOnly {
                 if let mono = Self.firstChannel(of: buffer, as: fileFormat) {
                     writer.append(mono)
+                    live?.append(mono)
                 }
             } else {
                 writer.append(buffer)
+                live?.append(buffer)
             }
         }
         self.writer = writer

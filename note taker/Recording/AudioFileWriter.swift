@@ -31,7 +31,7 @@ nonisolated final class AudioFileWriter: @unchecked Sendable {
     }
 
     func append(_ buffer: AVAudioPCMBuffer) {
-        guard let copy = Self.copy(buffer) else { return }
+        guard let copy = buffer.copied() else { return }
         queue.async { [self] in
             guard !isClosed else { return }
             try? file.write(from: copy)
@@ -45,16 +45,19 @@ nonisolated final class AudioFileWriter: @unchecked Sendable {
             file.close()
         }
     }
+}
 
-    private static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        let frames = buffer.frameLength
+nonisolated extension AVAudioPCMBuffer {
+    /// A copy that stays valid after an audio callback returns.
+    func copied() -> AVAudioPCMBuffer? {
+        let frames = frameLength
         guard frames > 0,
-              let copy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: frames)
+              let copy = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)
         else { return nil }
         copy.frameLength = frames
 
         let source = UnsafeMutableAudioBufferListPointer(
-            UnsafeMutablePointer(mutating: buffer.audioBufferList)
+            UnsafeMutablePointer(mutating: audioBufferList)
         )
         let destination = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
         for (src, dst) in zip(source, destination) {

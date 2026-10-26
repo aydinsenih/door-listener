@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C1308F240000DD69F2 /* WhisperKit */; };
 		6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C4308F240000DD69F2 /* SpeakerKit */; };
+		6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C6308F240000DD69F2 /* onnxruntime */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 			files = (
 				6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */,
 				6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */,
+				6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +76,7 @@
 			packageProductDependencies = (
 				6517B2C1308F240000DD69F2 /* WhisperKit */,
 				6517B2C4308F240000DD69F2 /* SpeakerKit */,
+				6517B2C6308F240000DD69F2 /* onnxruntime */,
 			);
 			productName = "note taker";
 			productReference = 6517B2A6308F23CD00DD69F2 /* note taker.app */;
@@ -105,6 +108,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6517B2C2308F240000DD69F2 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				6517B2C7308F240000DD69F2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6517B2A7308F23CD00DD69F2 /* Products */;
@@ -349,6 +353,14 @@
 				minimumVersion = 1.1.1;
 			};
 		};
+		6517B2C7308F240000DD69F2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.24.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -361,6 +373,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6517B2C2308F240000DD69F2 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = SpeakerKit;
+		};
+		6517B2C6308F240000DD69F2 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6517B2C7308F240000DD69F2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
