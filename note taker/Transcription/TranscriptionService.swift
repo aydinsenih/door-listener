@@ -10,6 +10,8 @@ nonisolated enum TranscriptionProgress: Sendable, Equatable {
     case downloadingModel(Double)
     case loadingModel
     case transcribing
+    case loadingSpeakerModel
+    case identifyingSpeakers
 }
 
 /// Runs transcription for finished sessions and keeps their transcripts.
@@ -25,6 +27,7 @@ final class TranscriptionService {
     private(set) var transcripts: [UUID: Transcript] = [:]
 
     @ObservationIgnored private let whisper: WhisperEngine
+    @ObservationIgnored private let diarizer: SpeakerDiarizer
     @ObservationIgnored private let apple = AppleSpeechEngine()
     @ObservationIgnored private var queue: [(RecordingSession, URL)] = []
     @ObservationIgnored private var isRunning = false
@@ -36,6 +39,7 @@ final class TranscriptionService {
             .appendingPathComponent("Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: modelsURL, withIntermediateDirectories: true)
         whisper = WhisperEngine(modelsURL: modelsURL)
+        diarizer = SpeakerDiarizer(modelsURL: modelsURL)
     }
 
     var selectedEngine: TranscriptionEngineKind {
@@ -97,16 +101,28 @@ final class TranscriptionService {
 
         var mic: [RawSegment] = []
         var system: [RawSegment] = []
+        var speakerTurns: [SpeakerTurn]?
+        var speakerError: String?
         if session.hasSystemAudio {
+            let systemURL = folder.appendingPathComponent(RecordingSession.systemFileName)
             system = try await transcribeTrack(
-                folder.appendingPathComponent(RecordingSession.systemFileName),
-                label: "system audio", session: session, engine: engine, language: language
+                systemURL, label: "system audio", wordTimings: true,
+                session: session, engine: engine, language: language
             )
+            if !system.isEmpty {
+                // A failed speaker split shouldn't lose the transcript; fall back to "Others".
+                do {
+                    speakerTurns = try await identifySpeakers(systemURL, session: session)
+                } catch {
+                    speakerError = error.localizedDescription
+                }
+            }
         }
         if session.hasMicrophone {
             mic = try await transcribeTrack(
                 folder.appendingPathComponent(RecordingSession.micFileName),
-                label: "your mic", session: session, engine: engine, language: language
+                label: "your mic", wordTimings: false,
+                session: session, engine: engine, language: language
             )
         }
 
@@ -114,31 +130,42 @@ final class TranscriptionService {
             engine: engine,
             language: engine == .apple ? language.rawValue : nil,
             createdAt: .now,
-            segments: TranscriptMerger.merge(mic: mic, system: system)
+            segments: TranscriptMerger.merge(mic: mic, system: system, speakerTurns: speakerTurns),
+            speakerError: speakerError
         )
+    }
+
+    private func identifySpeakers(_ url: URL, session: RecordingSession) async throws -> [SpeakerTurn] {
+        let label = "speakers"
+        statuses[session.id] = .working(track: label, progress: .identifyingSpeakers)
+        return try await diarizer.diarize(fileURL: url, onProgress: progressHandler(for: session.id, label: label))
     }
 
     private func transcribeTrack(
         _ url: URL,
         label: String,
+        wordTimings: Bool,
         session: RecordingSession,
         engine: TranscriptionEngineKind,
         language: AppleSpeechLanguage
     ) async throws -> [RawSegment] {
-        let id = session.id
-        statuses[id] = .working(track: label, progress: .transcribing)
-        let onProgress: @Sendable (TranscriptionProgress) -> Void = { progress in
+        statuses[session.id] = .working(track: label, progress: .transcribing)
+        let onProgress = progressHandler(for: session.id, label: label)
+        switch engine {
+        case .whisper:
+            return try await whisper.transcribe(fileURL: url, wordTimings: wordTimings, onProgress: onProgress)
+        case .apple:
+            return try await apple.transcribe(fileURL: url, language: language, onProgress: onProgress)
+        }
+    }
+
+    private func progressHandler(for id: UUID, label: String) -> @Sendable (TranscriptionProgress) -> Void {
+        { progress in
             Task { @MainActor [weak self] in
-                // Ignore updates that arrive after this track has finished.
+                // Ignore updates that arrive after this step has finished.
                 guard let self, case .working(let current, _) = self.statuses[id], current == label else { return }
                 self.statuses[id] = .working(track: label, progress: progress)
             }
-        }
-        switch engine {
-        case .whisper:
-            return try await whisper.transcribe(fileURL: url, onProgress: onProgress)
-        case .apple:
-            return try await apple.transcribe(fileURL: url, language: language, onProgress: onProgress)
         }
     }
 

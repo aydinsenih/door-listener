@@ -37,10 +37,21 @@ actor AppleSpeechEngine {
             for try await result in transcriber.results {
                 let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else { continue }
+                // Each run of the text carries the audio time it was heard at.
+                var words: [RawWord] = []
+                for run in result.text.runs {
+                    guard let range = run.audioTimeRange else { continue }
+                    words.append(RawWord(
+                        start: range.start.seconds,
+                        end: range.end.seconds,
+                        text: String(result.text[run.range].characters)
+                    ))
+                }
                 segments.append(RawSegment(
                     start: result.range.start.seconds,
                     end: result.range.end.seconds,
-                    text: text
+                    text: text,
+                    words: words
                 ))
             }
             return segments

@@ -19,8 +19,10 @@ actor WhisperEngine {
         self.modelsURL = modelsURL
     }
 
+    /// `wordTimings` adds per-word times, used to split segments between speakers.
     func transcribe(
         fileURL: URL,
+        wordTimings: Bool,
         onProgress: @escaping @Sendable (TranscriptionProgress) -> Void
     ) async throws -> [RawSegment] {
         let pipe = try await loadPipe(onProgress: onProgress)
@@ -32,12 +34,21 @@ actor WhisperEngine {
         options.detectLanguage = true
         options.skipSpecialTokens = true
         options.chunkingStrategy = .vad
+        options.wordTimestamps = wordTimings
 
         let results = try await pipe.transcribe(audioPath: fileURL.path, decodeOptions: options)
         return results.flatMap(\.segments).compactMap { segment in
             let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
-            return RawSegment(start: TimeInterval(segment.start), end: TimeInterval(segment.end), text: text)
+            let words = (segment.words ?? []).map {
+                RawWord(start: TimeInterval($0.start), end: TimeInterval($0.end), text: $0.word)
+            }
+            return RawSegment(
+                start: TimeInterval(segment.start),
+                end: TimeInterval(segment.end),
+                text: text,
+                words: words
+            )
         }
     }
 

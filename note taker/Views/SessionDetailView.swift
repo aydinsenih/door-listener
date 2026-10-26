@@ -5,6 +5,7 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Shows a session's transcript, or its transcription progress.
 struct SessionDetailView: View {
@@ -31,9 +32,14 @@ struct SessionDetailView: View {
                 Text(session.startedAt.formatted(date: .complete, time: .shortened))
                     .font(.headline)
                 if let transcript {
-                    Text("Transcribed with \(transcript.engine == .whisper ? "Whisper" : "Apple Speech")")
+                    Text(summary(of: transcript))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if let speakerError = transcript.speakerError {
+                        Text("Couldn't tell the other speakers apart: \(speakerError)")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
             Spacer()
@@ -42,6 +48,11 @@ struct SessionDetailView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(transcript.plainText, forType: .string)
                 }
+                Menu("Export", systemImage: "square.and.arrow.up") {
+                    Button("Text (.txt)") { export(transcript, markdown: false) }
+                    Button("Markdown (.md)") { export(transcript, markdown: true) }
+                }
+                .fixedSize()
             }
             Button(transcript == nil ? "Transcribe" : "Transcribe Again", systemImage: "text.bubble") {
                 transcription.enqueue(session, folder: store.folderURL(for: session))
@@ -49,6 +60,32 @@ struct SessionDetailView: View {
             .disabled(transcription.isBusy(session) || session.endedAt == nil)
         }
         .padding()
+    }
+
+    private var title: String {
+        "Recording, \(session.startedAt.formatted(date: .abbreviated, time: .shortened))"
+    }
+
+    private func summary(of transcript: Transcript) -> String {
+        let engine = transcript.engine == .whisper ? "Whisper" : "Apple Speech"
+        let others = transcript.speakers.filter { $0 != TranscriptMerger.meLabel }.count
+        guard transcript.speakerError == nil, others > 0 else { return "Transcribed with \(engine)" }
+        return "Transcribed with \(engine) · \(others) other \(others == 1 ? "speaker" : "speakers")"
+    }
+
+    private func export(_ transcript: Transcript, markdown: Bool) {
+        let fileExtension = markdown ? "md" : "txt"
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: fileExtension) ?? .plainText]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "Transcript \(session.folderName).\(fileExtension)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let text = markdown ? transcript.markdown(title: title) : transcript.plainText
+        do {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
     }
 
     @ViewBuilder
@@ -96,6 +133,12 @@ private struct TranscriptionProgressView: View {
                 ElapsedSinceAppear()
             case .transcribing:
                 ProgressView("Transcribing \(track)…")
+            case .loadingSpeakerModel:
+                ProgressView("Loading the speaker model…")
+                ElapsedSinceAppear()
+            case .identifyingSpeakers:
+                ProgressView("Telling speakers apart…")
+                ElapsedSinceAppear()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -113,23 +156,35 @@ private struct TranscriptView: View {
                 description: Text("Nothing was recognized in this recording.")
             )
         } else {
-            List(transcript.segments) { segment in
+            List(transcript.turns) { turn in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(Transcript.timestamp(segment.start))
+                    Text(Transcript.timestamp(turn.start))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .frame(width: 56, alignment: .trailing)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(segment.speaker)
+                        Text(turn.speaker)
                             .font(.caption.bold())
-                            .foregroundStyle(segment.speaker == TranscriptMerger.meLabel ? Color.accentColor : .secondary)
-                        Text(segment.text)
+                            .foregroundStyle(color(for: turn.speaker))
+                        Text(turn.text)
                             .textSelection(.enabled)
                     }
                 }
                 .padding(.vertical, 2)
             }
         }
+    }
+
+    private static let speakerColors: [Color] = [.orange, .green, .purple, .pink, .teal, .brown]
+
+    /// Me in the accent color, and a steady color per other speaker.
+    private func color(for speaker: String) -> Color {
+        if speaker == TranscriptMerger.meLabel { return .accentColor }
+        let others = transcript.speakers.filter { $0 != TranscriptMerger.meLabel }
+        guard speaker != TranscriptMerger.othersLabel, let index = others.firstIndex(of: speaker) else {
+            return .secondary
+        }
+        return Self.speakerColors[index % Self.speakerColors.count]
     }
 }
 

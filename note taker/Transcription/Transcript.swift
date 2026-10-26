@@ -46,6 +46,15 @@ nonisolated struct RawSegment: Sendable {
     var start: TimeInterval
     var end: TimeInterval
     var text: String
+    /// Word timings, used to split a segment where the speaker changes. Text keeps its
+    /// own leading spaces, so joining the words gives back the segment text.
+    var words: [RawWord] = []
+}
+
+nonisolated struct RawWord: Sendable {
+    var start: TimeInterval
+    var end: TimeInterval
+    var text: String
 }
 
 nonisolated struct TranscriptSegment: Codable, Hashable, Identifiable, Sendable {
@@ -64,11 +73,47 @@ nonisolated struct Transcript: Codable, Sendable {
     var language: String?
     var createdAt: Date
     var segments: [TranscriptSegment]
+    /// Set when the system track couldn't be split into speakers, so it's labeled "Others".
+    var speakerError: String?
+
+    /// Back-to-back segments from the same speaker, joined into one line each.
+    var turns: [TranscriptSegment] {
+        var turns: [TranscriptSegment] = []
+        for segment in segments {
+            if var last = turns.last, last.speaker == segment.speaker, segment.start - last.end < Self.turnGap {
+                last.end = max(last.end, segment.end)
+                last.text += " " + segment.text
+                turns[turns.count - 1] = last
+            } else {
+                turns.append(segment)
+            }
+        }
+        return turns
+    }
+
+    /// Distinct speaker labels, in order of first appearance.
+    var speakers: [String] {
+        var seen: [String] = []
+        for segment in segments where !seen.contains(segment.speaker) {
+            seen.append(segment.speaker)
+        }
+        return seen
+    }
+
+    /// A pause longer than this starts a new line even if the speaker didn't change.
+    private static let turnGap: TimeInterval = 8
 
     var plainText: String {
-        segments
+        turns
             .map { "[\(Self.timestamp($0.start))] \($0.speaker): \($0.text)" }
-            .joined(separator: "\n")
+            .joined(separator: "\n\n")
+    }
+
+    func markdown(title: String) -> String {
+        let body = turns
+            .map { "**\($0.speaker)** · \(Self.timestamp($0.start))  \n\($0.text)" }
+            .joined(separator: "\n\n")
+        return "# \(title)\n\n\(body)\n"
     }
 
     static func timestamp(_ seconds: TimeInterval) -> String {

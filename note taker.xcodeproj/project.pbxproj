@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C1308F240000DD69F2 /* WhisperKit */; };
+		6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C4308F240000DD69F2 /* SpeakerKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */,
+				6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = "note taker";
 			packageProductDependencies = (
 				6517B2C1308F240000DD69F2 /* WhisperKit */,
+				6517B2C4308F240000DD69F2 /* SpeakerKit */,
 			);
 			productName = "note taker";
 			productReference = 6517B2A6308F23CD00DD69F2 /* note taker.app */;
@@ -353,6 +356,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6517B2C2308F240000DD69F2 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		6517B2C4308F240000DD69F2 /* SpeakerKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6517B2C2308F240000DD69F2 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = SpeakerKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
