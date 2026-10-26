@@ -15,6 +15,7 @@ struct note_takerApp: App {
         Window("Door Listener", id: "main") {
             ContentView()
                 .environment(appDelegate.store)
+                .environment(appDelegate.playback)
         }
 
         MenuBarExtra {
@@ -29,6 +30,7 @@ struct note_takerApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = RecordingStore()
+    let playback = PlaybackController()
 
     func applicationWillTerminate(_ notification: Notification) {
         // Finalize the audio files so a quit mid-recording keeps what was captured.

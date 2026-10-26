@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(RecordingStore.self) private var store
+    @Environment(PlaybackController.self) private var playback
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,10 +39,22 @@ struct ContentView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
+        .alert(
+            "Playback problem",
+            isPresented: Binding(
+                get: { playback.errorMessage != nil },
+                set: { if !$0 { playback.errorMessage = nil } }
+            )
+        ) {
+            Button("OK") {}
+        } message: {
+            Text(playback.errorMessage ?? "")
+        }
     }
 }
 
 #Preview {
     ContentView()
         .environment(RecordingStore())
+        .environment(PlaybackController())
 }
