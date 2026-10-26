@@ -8,6 +8,7 @@ import SwiftUI
 struct SessionRow: View {
     @Environment(RecordingStore.self) private var store
     @Environment(PlaybackController.self) private var playback
+    @Environment(TranscriptionService.self) private var transcription
     let session: RecordingSession
 
     private var isPlaying: Bool { playback.isPlaying(session) }
@@ -41,6 +42,11 @@ struct SessionRow: View {
                 }
             }
             Spacer()
+            if transcription.isBusy(session) {
+                ProgressView()
+                    .controlSize(.small)
+                    .help("Transcribing")
+            }
             if session.hasMicrophone {
                 trackButton(.microphone, systemImage: "mic", help: "Play mic only")
             }

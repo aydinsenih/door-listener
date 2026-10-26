@@ -10,24 +10,39 @@ import SwiftUI
 struct ContentView: View {
     @Environment(RecordingStore.self) private var store
     @Environment(PlaybackController.self) private var playback
+    @State private var selection: RecordingSession.ID?
 
     var body: some View {
-        VStack(spacing: 0) {
-            RecorderHeader()
-            Divider()
-            if store.sessions.isEmpty {
-                ContentUnavailableView(
-                    "No recordings yet",
-                    systemImage: "waveform",
-                    description: Text("Press Start Listening to record your microphone and your Mac's audio.")
-                )
-            } else {
-                List(store.sessions) { session in
-                    SessionRow(session: session)
+        NavigationSplitView {
+            VStack(spacing: 0) {
+                RecorderHeader()
+                Divider()
+                if store.sessions.isEmpty {
+                    ContentUnavailableView(
+                        "No recordings yet",
+                        systemImage: "waveform",
+                        description: Text("Press Start Listening to record your microphone and your Mac's audio.")
+                    )
+                } else {
+                    List(store.sessions, selection: $selection) { session in
+                        SessionRow(session: session)
+                    }
                 }
             }
+            .navigationSplitViewColumnWidth(min: 380, ideal: 420)
+        } detail: {
+            if let session = store.sessions.first(where: { $0.id == selection }) {
+                SessionDetailView(session: session)
+                    .id(session.id)
+            } else {
+                ContentUnavailableView(
+                    "Select a recording",
+                    systemImage: "text.bubble",
+                    description: Text("Its transcript will appear here.")
+                )
+            }
         }
-        .frame(minWidth: 440, minHeight: 360)
+        .frame(minWidth: 820, minHeight: 460)
         .alert(
             "Recording problem",
             isPresented: Binding(
@@ -57,4 +72,5 @@ struct ContentView: View {
     ContentView()
         .environment(RecordingStore())
         .environment(PlaybackController())
+        .environment(TranscriptionService())
 }

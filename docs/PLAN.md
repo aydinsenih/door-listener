@@ -13,6 +13,8 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
 - Engine picker: Apple Speech (SpeechAnalyzer) or Whisper (WhisperKit, large-v3-turbo).
 - Whisper is the recommended default for mixed Turkish and English.
 - Each track transcribed separately, merged by timestamp.
+- Runs automatically when a recording stops; "Transcribe Again" re-runs it.
+- Speaker bleed filter (see Step 3) is applied in the merge.
 
 ## Step 3: Speaker labels and transcript viewer
 - Mic track is always "Me".

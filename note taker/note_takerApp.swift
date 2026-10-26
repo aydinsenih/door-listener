@@ -16,6 +16,7 @@ struct note_takerApp: App {
             ContentView()
                 .environment(appDelegate.store)
                 .environment(appDelegate.playback)
+                .environment(appDelegate.transcription)
         }
 
         MenuBarExtra {
@@ -25,12 +26,25 @@ struct note_takerApp: App {
             MenuBarLabel()
                 .environment(appDelegate.store)
         }
+
+        Settings {
+            SettingsView()
+        }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = RecordingStore()
     let playback = PlaybackController()
+    let transcription = TranscriptionService()
+
+    override init() {
+        super.init()
+        // Transcribe automatically once a recording stops, so it's ready when the user checks back.
+        store.onSessionFinished = { [store, transcription] session in
+            transcription.enqueue(session, folder: store.folderURL(for: session))
+        }
+    }
 
     func applicationWillTerminate(_ notification: Notification) {
         // Finalize the audio files so a quit mid-recording keeps what was captured.

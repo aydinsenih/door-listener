@@ -22,6 +22,8 @@ final class RecordingStore {
     @ObservationIgnored private var microphone: MicrophoneRecorder?
     @ObservationIgnored private var systemAudio: SystemAudioRecorder?
     @ObservationIgnored let rootURL: URL
+    /// Called after a recording stops and its files are finalized.
+    @ObservationIgnored var onSessionFinished: ((RecordingSession) -> Void)?
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -119,6 +121,7 @@ final class RecordingStore {
         save(session)
         activeSession = nil
         sessions.insert(session, at: 0)
+        onSessionFinished?(session)
     }
 
     func revealInFinder(_ session: RecordingSession) {

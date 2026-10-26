@@ -6,5 +6,7 @@
 	<string>Door Listener records your microphone so your side of a call or meeting can be transcribed.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Door Listener records the audio your Mac plays so the other people in a call, video or lecture can be transcribed.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Door Listener uses Apple Speech on this Mac to turn your recordings into transcripts.</string>
 </dict>
 </plist>
