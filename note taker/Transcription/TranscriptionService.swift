@@ -15,7 +15,7 @@ nonisolated enum TranscriptionProgress: Sendable, Equatable {
     case identifyingSpeakers
 }
 
-nonisolated enum AudioTrack: Sendable {
+nonisolated enum AudioTrack: Hashable, Sendable {
     case microphone
     case systemAudio
 }
@@ -47,7 +47,7 @@ nonisolated final class LiveTranscription: Sendable {
 }
 
 fileprivate nonisolated enum LiveEvent: Sendable {
-    case utterance(AudioTrack, Utterance)
+    case track(AudioTrack, LiveTrackProcessor.Event)
     case stopped(RecordingSession)
 }
 
@@ -68,6 +68,8 @@ final class TranscriptionService {
         /// Utterances heard but not transcribed yet.
         var backlog = 0
         var error: String?
+        /// What a streaming model has heard so far of the utterance in progress, per track.
+        var partials: [AudioTrack: String] = [:]
     }
 
     private(set) var statuses: [UUID: Status] = [:]
@@ -75,6 +77,7 @@ final class TranscriptionService {
     private(set) var transcripts: [UUID: Transcript] = [:]
 
     @ObservationIgnored private let whisper: WhisperEngine
+    @ObservationIgnored private let nemotron: NemotronEngine
     @ObservationIgnored private let diarizer: SpeakerDiarizer
     @ObservationIgnored private var appleEngines: [AppleSpeechLanguage: AppleSpeechEngine] = [:]
     @ObservationIgnored private var liveSessions: [UUID: LiveSession] = [:]
@@ -84,6 +87,8 @@ final class TranscriptionService {
     /// Work runs one job at a time, in order, so the model is never asked for two things at once.
     private enum Job {
         case prepareLive(UUID)
+        case speech(UUID, AudioTrack, start: TimeInterval, samples: [Float])
+        case discard(UUID, AudioTrack)
         case utterance(UUID, AudioTrack, Utterance)
         case finishLive(RecordingSession)
         case file(RecordingSession, URL)
@@ -99,6 +104,10 @@ final class TranscriptionService {
         let systemStream: any SpeechStream
         var mic: [RawSegment] = []
         var system: [RawSegment] = []
+
+        func stream(for track: AudioTrack) -> any SpeechStream {
+            track == .microphone ? microphoneStream : systemStream
+        }
     }
 
     init() {
@@ -108,6 +117,7 @@ final class TranscriptionService {
             .appendingPathComponent("Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: modelsURL, withIntermediateDirectories: true)
         whisper = WhisperEngine(modelsURL: modelsURL)
+        nemotron = NemotronEngine(modelsURL: modelsURL)
         diarizer = SpeakerDiarizer(modelsURL: modelsURL)
     }
 
@@ -148,27 +158,34 @@ final class TranscriptionService {
     /// Starts transcribing a recording as it records. Returns nil if voice detection can't
     /// run, in which case the recording is transcribed after it stops.
     func startLive(_ session: RecordingSession, folder: URL) -> LiveTranscription? {
+        let kind = selectedEngine
+        let language = selectedAppleLanguage
+        let engine = speechEngine(for: kind, language: language)
+        let microphoneStream = engine.makeStream(wordTimings: false)
+        let systemStream = engine.makeStream(wordTimings: true)
+
         let (events, continuation) = AsyncStream<LiveEvent>.makeStream()
         let microphone: LiveTrackProcessor
         let systemAudio: LiveTrackProcessor
         do {
-            microphone = try LiveTrackProcessor(label: "mic") { continuation.yield(.utterance(.microphone, $0)) }
-            systemAudio = try LiveTrackProcessor(label: "system") { continuation.yield(.utterance(.systemAudio, $0)) }
+            microphone = try LiveTrackProcessor(label: "mic", forwardsSpeech: microphoneStream.isStreaming) {
+                continuation.yield(.track(.microphone, $0))
+            }
+            systemAudio = try LiveTrackProcessor(label: "system", forwardsSpeech: systemStream.isStreaming) {
+                continuation.yield(.track(.systemAudio, $0))
+            }
         } catch {
             return nil
         }
 
-        let kind = selectedEngine
-        let language = selectedAppleLanguage
-        let engine = speechEngine(for: kind, language: language)
         let id = session.id
         liveSessions[id] = LiveSession(
             engine: engine,
             engineKind: kind,
             language: language,
             folder: folder,
-            microphoneStream: engine.makeStream(wordTimings: false),
-            systemStream: engine.makeStream(wordTimings: true)
+            microphoneStream: microphoneStream,
+            systemStream: systemStream
         )
         liveStatuses[id] = LiveStatus()
         transcripts[id] = Transcript(engine: kind, language: kind == .apple ? language.rawValue : nil, createdAt: .now, segments: [])
@@ -179,7 +196,11 @@ final class TranscriptionService {
             for await event in events {
                 guard let self else { return }
                 switch event {
-                case let .utterance(track, utterance):
+                case let .track(track, .speech(start, samples)):
+                    enqueue(.speech(id, track, start: start, samples: samples))
+                case let .track(track, .discarded):
+                    enqueue(.discard(id, track))
+                case let .track(track, .utterance(utterance)):
                     liveStatuses[id]?.backlog += 1
                     enqueue(.utterance(id, track, utterance))
                 case let .stopped(session):
@@ -201,19 +222,36 @@ final class TranscriptionService {
         }
     }
 
+    /// Speech a streaming model transcribes while it's being said.
+    private func feedLive(_ samples: [Float], at time: TimeInterval, track: AudioTrack, session id: UUID) async {
+        guard let live = liveSessions[id], liveStatuses[id]?.error == nil else { return }
+        do {
+            let partial = try await live.stream(for: track).feed(samples, at: time)
+            if !partial.isEmpty, liveStatuses[id]?.partials[track] != partial {
+                liveStatuses[id]?.partials[track] = partial
+            }
+        } catch {
+            liveStatuses[id]?.error = error.localizedDescription
+        }
+    }
+
+    private func discardLive(track: AudioTrack, session id: UUID) async {
+        guard let live = liveSessions[id] else { return }
+        await live.stream(for: track).discard()
+        liveStatuses[id]?.partials[track] = nil
+    }
+
     private func transcribeLive(_ utterance: Utterance, track: AudioTrack, session id: UUID) async {
         defer { liveStatuses[id]?.backlog -= 1 }
         // After a failure the saved audio is transcribed once recording stops instead.
         guard let live = liveSessions[id], liveStatuses[id]?.error == nil else { return }
         do {
+            let segments = try await live.stream(for: track).transcribe(utterance)
             switch track {
-            case .microphone:
-                let segments = try await live.microphoneStream.transcribe(utterance)
-                liveSessions[id]?.mic.append(contentsOf: segments)
-            case .systemAudio:
-                let segments = try await live.systemStream.transcribe(utterance)
-                liveSessions[id]?.system.append(contentsOf: segments)
+            case .microphone: liveSessions[id]?.mic.append(contentsOf: segments)
+            case .systemAudio: liveSessions[id]?.system.append(contentsOf: segments)
             }
+            liveStatuses[id]?.partials[track] = nil
         } catch {
             liveStatuses[id]?.error = error.localizedDescription
             return
@@ -397,6 +435,10 @@ final class TranscriptionService {
             switch jobs.removeFirst() {
             case let .prepareLive(id):
                 await prepareLive(id)
+            case let .speech(id, track, start, samples):
+                await feedLive(samples, at: start, track: track, session: id)
+            case let .discard(id, track):
+                await discardLive(track: track, session: id)
             case let .utterance(id, track, utterance):
                 await transcribeLive(utterance, track: track, session: id)
             case let .finishLive(session):
@@ -411,6 +453,8 @@ final class TranscriptionService {
         switch kind {
         case .whisper:
             return whisper
+        case .nemotron:
+            return nemotron
         case .apple:
             if let engine = appleEngines[language] { return engine }
             let engine = AppleSpeechEngine(language: language)

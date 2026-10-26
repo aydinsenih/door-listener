@@ -10,8 +10,13 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
 - Sessions saved in `~/Library/Application Support/Door Listener/Recordings/<date>/`.
 
 ## Step 2: Transcribe on-device, live while recording
-- Engine picker: Apple Speech (SpeechAnalyzer) or Whisper (WhisperKit, large-v3-turbo).
-- Whisper is the recommended default for mixed Turkish and English.
+- Engine picker in Settings:
+  - Whisper (WhisperKit, large-v3-turbo) with voice detection: the default for mixed
+    Turkish and English. A line appears after each pause.
+  - Nemotron 3.5 ASR Streaming Multilingual 0.6B (FluidAudio, CoreML on the Neural
+    Engine, 1120 ms chunks, language auto-detected): streams natively, so text shows
+    while people talk and settles at the pause. Apple Silicon only, about 665 MB.
+  - Apple Speech (SpeechAnalyzer): one language per recording.
 - Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)
   as it is captured. Silence never reaches the speech model, which saves CPU and
   stops Whisper from inventing phrases in quiet parts.
@@ -19,7 +24,8 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
   at its quietest point if it reaches 20 s. Each one is transcribed right away, so
   lines show up in the open session while recording.
 - The speech model sits behind `SpeechEngine` / `SpeechStream`, so another model
-  (including one that streams natively) can be dropped in.
+  can be dropped in. A streaming model is fed each utterance's audio as it's heard
+  and finishes the utterance at the pause.
 - Each track transcribed separately, merged by timestamp. The transcript is saved
   as it grows.
 - "Transcribe Again" runs the same VAD over the saved files. If live transcription

@@ -7,6 +7,7 @@ import Foundation
 
 nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case whisper
+    case nemotron
     case apple
 
     static let settingsKey = "transcriptionEngine"
@@ -16,8 +17,17 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
 
     var displayName: String {
         switch self {
-        case .whisper: "Whisper (mixed Turkish and English)"
+        case .whisper: "Whisper with voice detection (mixed Turkish and English)"
+        case .nemotron: "Nemotron streaming (mixed Turkish and English, text while people talk)"
         case .apple: "Apple Speech (one language)"
+        }
+    }
+
+    var shortName: String {
+        switch self {
+        case .whisper: "Whisper"
+        case .nemotron: "Nemotron"
+        case .apple: "Apple Speech"
         }
     }
 }
@@ -132,6 +142,7 @@ nonisolated enum TranscriptionError: LocalizedError {
     case noAudio
     case vadModelMissing
     case vadFailed
+    case modelUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -143,6 +154,8 @@ nonisolated enum TranscriptionError: LocalizedError {
             "The voice detection model is missing from the app. Reinstall Door Listener."
         case .vadFailed:
             "Voice detection failed on this audio."
+        case .modelUnavailable:
+            "The speech model couldn't be loaded."
         }
     }
 }

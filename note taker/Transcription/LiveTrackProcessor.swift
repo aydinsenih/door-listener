@@ -9,20 +9,32 @@ import AVFoundation
 /// Silero VAD on it and hands over each utterance as soon as the speaker pauses.
 /// Silence never reaches the speech model.
 nonisolated final class LiveTrackProcessor: @unchecked Sendable {
+    nonisolated enum Event: Sendable {
+        /// Speech as it's heard, before the utterance ends. Only sent with `forwardsSpeech`.
+        case speech(start: TimeInterval, samples: [Float])
+        /// A finished utterance.
+        case utterance(Utterance)
+        /// The speech sent since the last utterance turned out to be a click or a cough.
+        case discarded
+    }
+
     private let queue: DispatchQueue
     private let vad: SileroVAD
-    private let onUtterance: @Sendable (Utterance) -> Void
+    private let forwardsSpeech: Bool
+    private let onEvent: @Sendable (Event) -> Void
     private var segmenter = SpeechSegmenter()
     private var converter: AVAudioConverter?
     /// Resampled audio that doesn't fill a VAD window yet.
     private var pending: [Float] = []
     private var isFinished = false
 
-    /// `onUtterance` is called on a background queue, in order.
-    init(label: String, onUtterance: @escaping @Sendable (Utterance) -> Void) throws {
+    /// `onEvent` is called on a background queue, in order. `forwardsSpeech` is for models
+    /// that stream natively and transcribe speech while it's still being said.
+    init(label: String, forwardsSpeech: Bool, onEvent: @escaping @Sendable (Event) -> Void) throws {
         vad = try SileroVAD()
         queue = DispatchQueue(label: "LiveTrackProcessor.\(label)", qos: .userInitiated)
-        self.onUtterance = onUtterance
+        self.forwardsSpeech = forwardsSpeech
+        self.onEvent = onEvent
     }
 
     /// Called from the audio callback. The buffer is copied, so it can be reused right away.
@@ -40,25 +52,50 @@ nonisolated final class LiveTrackProcessor: @unchecked Sendable {
         queue.sync {
             guard !isFinished else { return }
             isFinished = true
-            if let utterance = segmenter.finish() {
-                onUtterance(utterance)
-            }
+            send(segmenter.finish())
         }
     }
 
     private func processPendingWindows() {
         let size = SileroVAD.windowSize
         var start = 0
+        // Speech from consecutive windows goes out as one piece per buffer.
+        var speech: (start: TimeInterval, samples: [Float])?
         while start + size <= pending.count {
             let window = Array(pending[start..<(start + size)])
             start += size
             // A failed window counts as silence rather than stopping the transcript.
             let probability = (try? vad.speechProbability(window)) ?? 0
-            if let utterance = segmenter.process(window, probability: probability) {
-                onUtterance(utterance)
+            let output = segmenter.process(window, probability: probability)
+            if forwardsSpeech, let piece = output.speech {
+                if speech == nil {
+                    speech = piece
+                } else {
+                    speech?.samples.append(contentsOf: piece.samples)
+                }
+            }
+            if output.finished != nil || output.discarded {
+                flush(&speech)
+                send(output)
             }
         }
+        flush(&speech)
         pending.removeFirst(start)
+    }
+
+    private func flush(_ speech: inout (start: TimeInterval, samples: [Float])?) {
+        if let piece = speech {
+            onEvent(.speech(start: piece.start, samples: piece.samples))
+        }
+        speech = nil
+    }
+
+    private func send(_ output: SegmenterOutput) {
+        if let utterance = output.finished {
+            onEvent(.utterance(utterance))
+        } else if output.discarded, forwardsSpeech {
+            onEvent(.discarded)
+        }
     }
 
     private func resample(_ buffer: AVAudioPCMBuffer) -> [Float]? {

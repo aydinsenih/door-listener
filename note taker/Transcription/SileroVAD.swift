@@ -76,12 +76,12 @@ nonisolated extension SpeechSegmenter {
         var start = 0
         while start + SileroVAD.windowSize <= samples.count {
             let window = Array(samples[start..<(start + SileroVAD.windowSize)])
-            if let utterance = segmenter.process(window, probability: try vad.speechProbability(window)) {
+            if let utterance = segmenter.process(window, probability: try vad.speechProbability(window)).finished {
                 utterances.append(utterance)
             }
             start += SileroVAD.windowSize
         }
-        if let last = segmenter.finish() {
+        if let last = segmenter.finish().finished {
             utterances.append(last)
         }
         return utterances

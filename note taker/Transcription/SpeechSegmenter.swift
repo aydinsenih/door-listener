@@ -15,6 +15,17 @@ nonisolated struct Utterance: Sendable {
     var end: TimeInterval { start + duration }
 }
 
+/// What one window changed.
+nonisolated struct SegmenterOutput {
+    /// Audio this window added to the utterance in progress, and where it starts in the
+    /// track. Streaming models transcribe it right away.
+    var speech: (start: TimeInterval, samples: [Float])?
+    /// An utterance this window completed.
+    var finished: Utterance?
+    /// The utterance in progress was dropped as too short to be speech.
+    var discarded = false
+}
+
 /// Turns a stream of VAD speech probabilities into utterances, dropping the silence
 /// between them. Fed one 32 ms window at a time, so it works the same live and on a file.
 nonisolated struct SpeechSegmenter {
@@ -56,13 +67,14 @@ nonisolated struct SpeechSegmenter {
         self.settings = settings
     }
 
-    /// Feeds one window and its speech probability. Returns any utterance it completes.
-    mutating func process(_ window: [Float], probability: Float) -> Utterance? {
+    /// Feeds one window and its speech probability.
+    mutating func process(_ window: [Float], probability: Float) -> SegmenterOutput {
         defer { position += window.count }
 
         guard var utterance = current else {
             if probability >= settings.threshold {
-                current = Utterance(start: Double(position - preRoll.count) / Self.sampleRate, samples: preRoll + window)
+                let started = Utterance(start: Double(position - preRoll.count) / Self.sampleRate, samples: preRoll + window)
+                current = started
                 windows = [(offset: preRoll.count, probability: probability)]
                 speechSamples = window.count
                 trailingSilence = 0
@@ -71,8 +83,9 @@ nonisolated struct SpeechSegmenter {
                 preRoll.append(contentsOf: window)
                 let keep = samples(settings.padding)
                 if preRoll.count > keep { preRoll.removeFirst(preRoll.count - keep) }
+                return SegmenterOutput()
             }
-            return nil
+            return SegmenterOutput(speech: (started.start, started.samples))
         }
 
         windows.append((offset: utterance.samples.count, probability: probability))
@@ -84,25 +97,29 @@ nonisolated struct SpeechSegmenter {
             trailingSilence += window.count
         }
         current = utterance
+        var output = SegmenterOutput(speech: (Double(position) / Self.sampleRate, window))
 
         let neededSilence = utterance.duration > settings.longUtterance
             ? settings.minSilenceWhenLong
             : settings.minSilence
         if trailingSilence >= samples(neededSilence) {
-            return endUtterance()
+            output.finished = endUtterance()
+            output.discarded = output.finished == nil
+        } else if utterance.duration >= settings.maxUtterance {
+            output.finished = cutLongUtterance(windowSize: window.count)
         }
-        if utterance.duration >= settings.maxUtterance {
-            return cutLongUtterance(windowSize: window.count)
-        }
-        return nil
+        return output
     }
 
     /// Ends the utterance in progress, for when the audio stops.
-    mutating func finish() -> Utterance? {
-        current == nil ? nil : endUtterance()
+    mutating func finish() -> SegmenterOutput {
+        guard current != nil else { return SegmenterOutput() }
+        let finished = endUtterance()
+        return SegmenterOutput(finished: finished, discarded: finished == nil)
     }
 
-    /// Ends the current utterance at the pause, keeping `padding` of it.
+    /// Ends the current utterance at the pause, keeping `padding` of it. Returns nil
+    /// if it had too little speech.
     private mutating func endUtterance() -> Utterance? {
         guard var utterance = current else { return nil }
         let silenceToDrop = min(max(0, trailingSilence - samples(settings.padding)), utterance.samples.count)

@@ -67,7 +67,7 @@ struct SessionDetailView: View {
     }
 
     private func summary(of transcript: Transcript) -> String {
-        let engine = transcript.engine == .whisper ? "Whisper" : "Apple Speech"
+        let engine = transcript.engine.shortName
         let others = transcript.speakers.filter { $0 != TranscriptMerger.meLabel }.count
         guard transcript.speakerError == nil, others > 0 else { return "Transcribed with \(engine)" }
         return "Transcribed with \(engine) · \(others) other \(others == 1 ? "speaker" : "speakers")"
@@ -93,7 +93,7 @@ struct SessionDetailView: View {
         if let live = transcription.liveStatuses[session.id] {
             LiveStatusBar(status: live, isRecording: session.endedAt == nil)
             Divider()
-            TranscriptView(transcript: transcript, isLive: true)
+            TranscriptView(transcript: transcript, isLive: true, partials: live.partials)
         } else {
             finishedContent
         }
@@ -115,7 +115,7 @@ struct SessionDetailView: View {
             )
         case nil:
             if let transcript {
-                TranscriptView(transcript: transcript, isLive: false)
+                TranscriptView(transcript: transcript, isLive: false, partials: [:])
             } else {
                 ContentUnavailableView(
                     "No transcript yet",
@@ -218,9 +218,11 @@ private struct TranscriptView: View {
     /// While recording, an empty transcript means nobody has spoken yet, and new lines
     /// keep the list scrolled to the bottom.
     let isLive: Bool
+    /// Text a streaming model has heard so far, shown under the finished lines.
+    let partials: [AudioTrack: String]
 
     var body: some View {
-        if let transcript, !transcript.segments.isEmpty {
+        if let transcript, !transcript.segments.isEmpty || !partials.isEmpty {
             list(transcript)
         } else if isLive {
             ContentUnavailableView(
@@ -238,23 +240,58 @@ private struct TranscriptView: View {
     }
 
     private func list(_ transcript: Transcript) -> some View {
-        List(transcript.turns) { turn in
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(Transcript.timestamp(turn.start))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 56, alignment: .trailing)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(turn.speaker)
-                        .font(.caption.bold())
-                        .foregroundStyle(color(for: turn.speaker, in: transcript))
-                    Text(turn.text)
-                        .textSelection(.enabled)
+        List {
+            ForEach(transcript.turns) { turn in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(Transcript.timestamp(turn.start))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 56, alignment: .trailing)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(turn.speaker)
+                            .font(.caption.bold())
+                            .foregroundStyle(color(for: turn.speaker, in: transcript))
+                        Text(turn.text)
+                            .textSelection(.enabled)
+                    }
                 }
+                .padding(.vertical, 2)
             }
-            .padding(.vertical, 2)
+            ForEach(partialLines) { line in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 56, alignment: .trailing)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(line.speaker)
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        Text(line.text)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
         }
         .defaultScrollAnchor(isLive ? .bottom : .top, for: .sizeChanges)
+    }
+
+    private struct PartialLine: Identifiable {
+        var speaker: String
+        var text: String
+        var id: String { speaker }
+    }
+
+    /// Lines still being spoken. The other side gets its speaker number once recording stops.
+    private var partialLines: [PartialLine] {
+        var lines: [PartialLine] = []
+        if let text = partials[.microphone] {
+            lines.append(PartialLine(speaker: TranscriptMerger.meLabel, text: text))
+        }
+        if let text = partials[.systemAudio] {
+            lines.append(PartialLine(speaker: TranscriptMerger.othersLabel, text: text))
+        }
+        return lines
     }
 
     private static let speakerColors: [Color] = [.orange, .green, .purple, .pink, .teal, .brown]
