@@ -46,8 +46,9 @@ nonisolated final class SystemAudioRecorder: @unchecked Sendable {
     }
 
     private func startTap(writingTo url: URL) throws {
-        // A global stereo tap of every process, excluding none.
-        let tapDescription = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        // A global stereo tap of every process except this app, so the mic's voice
+        // processing and in-app playback don't end up in the system track.
+        let tapDescription = CATapDescription(stereoGlobalTapButExcludeProcesses: Self.ownProcessObjects())
         tapDescription.uuid = UUID()
         tapDescription.muteBehavior = .unmuted
         tapDescription.isPrivate = true
@@ -119,9 +120,30 @@ nonisolated final class SystemAudioRecorder: @unchecked Sendable {
         return description
     }
 
+    private static func ownProcessObjects() -> [AudioObjectID] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var pid = getpid()
+        var processObject = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            UInt32(MemoryLayout<pid_t>.size),
+            &pid,
+            &size,
+            &processObject
+        )
+        guard status == noErr, processObject != kAudioObjectUnknown else { return [] }
+        return [processObject]
+    }
+
     private static func defaultOutputDeviceUID() throws -> String {
         var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultSystemOutputDevice,
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )

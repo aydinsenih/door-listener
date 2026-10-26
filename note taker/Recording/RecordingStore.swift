@@ -73,6 +73,17 @@ final class RecordingStore {
         var started = session
         var problems: [String] = []
 
+        // System audio starts first: turning on the mic's voice processing reconfigures
+        // the output device, and the tap has to be in place before that happens.
+        let systemAudio = SystemAudioRecorder()
+        do {
+            try systemAudio.start(writingTo: folder.appendingPathComponent(RecordingSession.systemFileName))
+            self.systemAudio = systemAudio
+            started.hasSystemAudio = true
+        } catch {
+            problems.append("System audio: \(error.localizedDescription)")
+        }
+
         let microphone = MicrophoneRecorder()
         do {
             try microphone.start(
@@ -83,15 +94,6 @@ final class RecordingStore {
             started.hasMicrophone = true
         } catch {
             problems.append("Microphone: \(error.localizedDescription)")
-        }
-
-        let systemAudio = SystemAudioRecorder()
-        do {
-            try systemAudio.start(writingTo: folder.appendingPathComponent(RecordingSession.systemFileName))
-            self.systemAudio = systemAudio
-            started.hasSystemAudio = true
-        } catch {
-            problems.append("System audio: \(error.localizedDescription)")
         }
 
         if !problems.isEmpty {
