@@ -3,6 +3,7 @@
 //  note taker
 //
 
+import CoreML
 import Foundation
 import WhisperKit
 
@@ -55,11 +56,18 @@ actor WhisperEngine {
         )
 
         onProgress(.loadingModel)
+        // Run on the GPU. The Neural Engine default makes macOS compile the large model
+        // for it on first load, which can take many minutes and looks like a hang.
         let config = WhisperKitConfig(
             downloadBase: modelsURL,
             modelFolder: modelFolder.path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuAndGPU,
+                audioEncoderCompute: .cpuAndGPU,
+                textDecoderCompute: .cpuAndGPU
+            ),
             verbose: false,
-            prewarm: true,
+            prewarm: false,
             load: true,
             download: false
         )

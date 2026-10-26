@@ -93,6 +93,7 @@ private struct TranscriptionProgressView: View {
                 .frame(maxWidth: 320)
             case .loadingModel:
                 ProgressView("Loading the speech model…")
+                ElapsedSinceAppear()
             case .transcribing:
                 ProgressView("Transcribing \(track)…")
             }
@@ -129,5 +130,16 @@ private struct TranscriptView: View {
                 .padding(.vertical, 2)
             }
         }
+    }
+}
+
+/// Shows how long a step has been running, so a slow step doesn't look frozen.
+private struct ElapsedSinceAppear: View {
+    @State private var start = Date.now
+
+    var body: some View {
+        ElapsedTimeText(since: start)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
     }
 }
