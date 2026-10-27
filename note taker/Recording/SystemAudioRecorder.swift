@@ -17,9 +17,10 @@ nonisolated final class SystemAudioRecorder: @unchecked Sendable {
     private var writer: AudioFileWriter?
     private let ioQueue = DispatchQueue(label: "SystemAudioRecorder.io", qos: .userInitiated)
 
-    func start(writingTo url: URL) throws {
+    /// `live` also gets every buffer, for transcribing while recording.
+    func start(writingTo url: URL, live: LiveTrackProcessor?) throws {
         do {
-            try startTap(writingTo: url)
+            try startTap(writingTo: url, live: live)
         } catch {
             stop()
             throw error
@@ -45,7 +46,7 @@ nonisolated final class SystemAudioRecorder: @unchecked Sendable {
         writer = nil
     }
 
-    private func startTap(writingTo url: URL) throws {
+    private func startTap(writingTo url: URL, live: LiveTrackProcessor?) throws {
         // A global stereo tap of every process except this app, so the mic's voice
         // processing and in-app playback don't end up in the system track.
         let tapDescription = CATapDescription(stereoGlobalTapButExcludeProcesses: Self.ownProcessObjects())
@@ -99,6 +100,7 @@ nonisolated final class SystemAudioRecorder: @unchecked Sendable {
                     deallocator: nil
                 ) else { return }
                 writer.append(buffer)
+                live?.append(buffer)
             },
             "Connecting to system audio"
         )

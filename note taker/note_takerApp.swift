@@ -40,8 +40,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     override init() {
         super.init()
-        // Transcribe automatically once a recording stops, so it's ready when the user checks back.
+        // Transcribe while recording, so lines show up as people talk.
+        store.startLiveTranscription = { [transcription] session, folder in
+            transcription.startLive(session, folder: folder)
+        }
+        // If live transcription couldn't start, transcribe once the recording stops instead.
         store.onSessionFinished = { [store, transcription] session in
+            guard !transcription.isLive(session) else { return }
             transcription.enqueue(session, folder: store.folderURL(for: session))
         }
     }

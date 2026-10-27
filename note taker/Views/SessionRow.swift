@@ -12,6 +12,8 @@ struct SessionRow: View {
     let session: RecordingSession
 
     private var isPlaying: Bool { playback.isPlaying(session) }
+    /// The audio files aren't finished while recording, so they can't be played yet.
+    private var isRecording: Bool { session.endedAt == nil && store.activeSession?.id == session.id }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -27,11 +29,16 @@ struct SessionRow: View {
             }
             .buttonStyle(.borderless)
             .help(isPlaying ? "Stop" : "Play mic and system audio together")
+            .disabled(isRecording)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.startedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.headline)
-                if isPlaying {
+                if isRecording {
+                    ElapsedTimeText(since: session.startedAt)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.red)
+                } else if isPlaying {
                     PlaybackProgressText()
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -42,24 +49,30 @@ struct SessionRow: View {
                 }
             }
             Spacer()
-            if transcription.isBusy(session) {
-                ProgressView()
-                    .controlSize(.small)
-                    .help("Transcribing")
-            }
-            if session.hasMicrophone {
-                trackButton(.microphone, systemImage: "mic", help: "Play mic only")
-            }
-            if session.hasSystemAudio {
-                trackButton(.systemAudio, systemImage: "speaker.wave.2", help: "Play system audio only")
+            if isRecording {
+                Label("Live", systemImage: "record.circle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else {
+                if transcription.isBusy(session) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .help("Transcribing")
+                }
+                if session.hasMicrophone {
+                    trackButton(.microphone, systemImage: "mic", help: "Play mic only")
+                }
+                if session.hasSystemAudio {
+                    trackButton(.systemAudio, systemImage: "speaker.wave.2", help: "Play system audio only")
+                }
             }
         }
         .padding(.vertical, 4)
         .contextMenu {
             Button("Play Mic Only") { play(.microphone) }
-                .disabled(!session.hasMicrophone)
+                .disabled(!session.hasMicrophone || isRecording)
             Button("Play System Audio Only") { play(.systemAudio) }
-                .disabled(!session.hasSystemAudio)
+                .disabled(!session.hasSystemAudio || isRecording)
             Divider()
             Button("Show in Finder") { store.revealInFinder(session) }
             Divider()
@@ -67,6 +80,7 @@ struct SessionRow: View {
                 if isPlaying { playback.stop() }
                 store.moveToTrash(session)
             }
+            .disabled(isRecording)
         }
     }
 

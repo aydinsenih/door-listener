@@ -43,6 +43,10 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 820, minHeight: 460)
+        .onChange(of: store.activeSession?.id) { _, id in
+            // Open a new recording, so its transcript can be followed live.
+            if let id { selection = id }
+        }
         .alert(
             "Recording problem",
             isPresented: Binding(
