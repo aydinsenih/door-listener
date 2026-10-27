@@ -79,13 +79,12 @@ nonisolated struct SpeechSegmenter {
                 speechSamples = window.count
                 trailingSilence = 0
                 preRoll = []
-            } else {
-                preRoll.append(contentsOf: window)
-                let keep = samples(settings.padding)
-                if preRoll.count > keep { preRoll.removeFirst(preRoll.count - keep) }
-                return SegmenterOutput()
+                return SegmenterOutput(speech: (started.start, started.samples))
             }
-            return SegmenterOutput(speech: (started.start, started.samples))
+            preRoll.append(contentsOf: window)
+            let keep = samples(settings.padding)
+            if preRoll.count > keep { preRoll.removeFirst(preRoll.count - keep) }
+            return SegmenterOutput()
         }
 
         windows.append((offset: utterance.samples.count, probability: probability))
