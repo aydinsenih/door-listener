@@ -10,6 +10,7 @@
 		6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C1308F240000DD69F2 /* WhisperKit */; };
 		6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C4308F240000DD69F2 /* SpeakerKit */; };
 		6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C6308F240000DD69F2 /* onnxruntime */; };
+		6517B2CB308F240000DD69F2 /* Qwen3ASR in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2CC308F240000DD69F2 /* Qwen3ASR */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 				6517B2C0308F240000DD69F2 /* WhisperKit in Frameworks */,
 				6517B2C3308F240000DD69F2 /* SpeakerKit in Frameworks */,
 				6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */,
+				6517B2CB308F240000DD69F2 /* Qwen3ASR in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +79,7 @@
 				6517B2C1308F240000DD69F2 /* WhisperKit */,
 				6517B2C4308F240000DD69F2 /* SpeakerKit */,
 				6517B2C6308F240000DD69F2 /* onnxruntime */,
+				6517B2CC308F240000DD69F2 /* Qwen3ASR */,
 			);
 			productName = "note taker";
 			productReference = 6517B2A6308F23CD00DD69F2 /* note taker.app */;
@@ -109,6 +112,7 @@
 			packageReferences = (
 				6517B2C2308F240000DD69F2 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 				6517B2C7308F240000DD69F2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+				6517B2CD308F240000DD69F2 /* XCRemoteSwiftPackageReference "speech-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6517B2A7308F23CD00DD69F2 /* Products */;
@@ -361,6 +365,14 @@
 				minimumVersion = 1.24.2;
 			};
 		};
+		6517B2CD308F240000DD69F2 /* XCRemoteSwiftPackageReference "speech-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soniqo/speech-swift";
+			requirement = {
+				kind = exactVersion;
+				version = 0.0.29;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -378,6 +390,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6517B2C7308F240000DD69F2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
 			productName = onnxruntime;
+		};
+		6517B2CC308F240000DD69F2 /* Qwen3ASR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6517B2CD308F240000DD69F2 /* XCRemoteSwiftPackageReference "speech-swift" */;
+			productName = Qwen3ASR;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

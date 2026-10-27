@@ -25,6 +25,10 @@ struct SettingsView: View {
                 Text("A line appears a moment after each speaker pauses. Silence is skipped by voice detection before it reaches Whisper. The model (about 1.6 GB) is downloaded the first time. Everything runs on this Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            case .qwenSmall, .qwenLarge:
+                Text("A line appears a moment after each speaker pauses, like Whisper. Qwen3-ASR detects the language per sentence. It gives no word timings, so a sentence where two people overlap goes to one speaker. The model (\(engine == .qwenSmall ? "about 0.65 GB" : "about 2.3 GB")) is downloaded the first time. Everything runs on this Mac.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             case .apple:
                 Picker("Language", selection: $appleLanguage) {
                     ForEach(AppleSpeechLanguage.allCases) { language in

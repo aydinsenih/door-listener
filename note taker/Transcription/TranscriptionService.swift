@@ -77,6 +77,8 @@ final class TranscriptionService {
     private(set) var transcripts: [UUID: Transcript] = [:]
 
     @ObservationIgnored private let whisper: WhisperEngine
+    @ObservationIgnored private let qwenSmall: QwenEngine
+    @ObservationIgnored private let qwenLarge: QwenEngine
     @ObservationIgnored private let diarizer: SpeakerDiarizer
     @ObservationIgnored private var appleEngines: [AppleSpeechLanguage: AppleSpeechEngine] = [:]
     @ObservationIgnored private var liveSessions: [UUID: LiveSession] = [:]
@@ -116,6 +118,8 @@ final class TranscriptionService {
             .appendingPathComponent("Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: modelsURL, withIntermediateDirectories: true)
         whisper = WhisperEngine(modelsURL: modelsURL)
+        qwenSmall = QwenEngine(size: .small, modelsURL: modelsURL)
+        qwenLarge = QwenEngine(size: .large, modelsURL: modelsURL)
         diarizer = SpeakerDiarizer(modelsURL: modelsURL)
     }
 
@@ -451,6 +455,10 @@ final class TranscriptionService {
         switch kind {
         case .whisper:
             return whisper
+        case .qwenSmall:
+            return qwenSmall
+        case .qwenLarge:
+            return qwenLarge
         case .apple:
             if let engine = appleEngines[language] { return engine }
             let engine = AppleSpeechEngine(language: language)

@@ -13,6 +13,8 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
 - Engine picker in Settings:
   - Whisper (WhisperKit, large-v3-turbo) with voice detection: the default for mixed
     Turkish and English. A line appears after each pause.
+  - Qwen3-ASR 0.6B or 1.7B (speech-swift, MLX) with the same voice detection. Detects
+    the language per sentence. No word timings, so each sentence is one line.
   - Apple Speech (SpeechAnalyzer): one language per recording.
 - Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)
   as it is captured. Silence never reaches the speech model, which saves CPU and
