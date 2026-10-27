@@ -7,7 +7,6 @@ import Foundation
 
 nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case whisper
-    case nemotron
     case apple
 
     static let settingsKey = "transcriptionEngine"
@@ -18,7 +17,6 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
     var displayName: String {
         switch self {
         case .whisper: "Whisper with voice detection (mixed Turkish and English)"
-        case .nemotron: "Nemotron streaming (mixed Turkish and English, text while people talk)"
         case .apple: "Apple Speech (one language)"
         }
     }
@@ -26,7 +24,6 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
     var shortName: String {
         switch self {
         case .whisper: "Whisper"
-        case .nemotron: "Nemotron"
         case .apple: "Apple Speech"
         }
     }
