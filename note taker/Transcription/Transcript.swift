@@ -18,7 +18,7 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
     var displayName: String {
         switch self {
         case .whisper: "Whisper with voice detection (mixed Turkish and English)"
-        case .nemotron: "Nemotron streaming (mixed Turkish and English, text while people talk)"
+        case .nemotron: "Nemotron streaming (text while people talk)"
         case .apple: "Apple Speech (one language)"
         }
     }
@@ -47,6 +47,31 @@ nonisolated enum AppleSpeechLanguage: String, CaseIterable, Identifiable, Sendab
         switch self {
         case .turkish: "Turkish"
         case .english: "English"
+        }
+    }
+}
+
+/// Languages Nemotron is pinned to. Its own detection drifts mid-sentence, so it's never
+/// left to pick freely.
+nonisolated enum NemotronLanguage: String, CaseIterable, Identifiable, Sendable {
+    case turkishAndEnglish = "tr-TR,en-US"
+    case turkish = "tr-TR"
+    case english = "en-US"
+
+    static let settingsKey = "nemotronLanguage"
+    static let `default`: NemotronLanguage = .turkishAndEnglish
+
+    var id: String { rawValue }
+    var codes: [String] { rawValue.components(separatedBy: ",") }
+
+    /// The language the text shown while someone talks is decoded in.
+    var streamingCode: String { self == .turkishAndEnglish ? "auto" : rawValue }
+
+    var displayName: String {
+        switch self {
+        case .turkishAndEnglish: "Turkish and English"
+        case .turkish: "Turkish only"
+        case .english: "English only"
         }
     }
 }
@@ -143,6 +168,7 @@ nonisolated enum TranscriptionError: LocalizedError {
     case vadModelMissing
     case vadFailed
     case modelUnavailable
+    case nemotronLanguageUnsupported(String)
 
     var errorDescription: String? {
         switch self {
@@ -156,6 +182,8 @@ nonisolated enum TranscriptionError: LocalizedError {
             "Voice detection failed on this audio."
         case .modelUnavailable:
             "The speech model couldn't be loaded."
+        case let .nemotronLanguageUnsupported(code):
+            "Nemotron doesn't support \(code). Pick another language or engine in Settings."
         }
     }
 }

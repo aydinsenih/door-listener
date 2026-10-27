@@ -77,7 +77,8 @@ final class TranscriptionService {
     private(set) var transcripts: [UUID: Transcript] = [:]
 
     @ObservationIgnored private let whisper: WhisperEngine
-    @ObservationIgnored private let nemotron: NemotronEngine
+    @ObservationIgnored private let modelsURL: URL
+    @ObservationIgnored private var nemotronEngines: [NemotronLanguage: NemotronEngine] = [:]
     @ObservationIgnored private let diarizer: SpeakerDiarizer
     @ObservationIgnored private var appleEngines: [AppleSpeechLanguage: AppleSpeechEngine] = [:]
     @ObservationIgnored private var liveSessions: [UUID: LiveSession] = [:]
@@ -117,7 +118,7 @@ final class TranscriptionService {
             .appendingPathComponent("Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: modelsURL, withIntermediateDirectories: true)
         whisper = WhisperEngine(modelsURL: modelsURL)
-        nemotron = NemotronEngine(modelsURL: modelsURL)
+        self.modelsURL = modelsURL
         diarizer = SpeakerDiarizer(modelsURL: modelsURL)
     }
 
@@ -129,6 +130,11 @@ final class TranscriptionService {
     var selectedAppleLanguage: AppleSpeechLanguage {
         UserDefaults.standard.string(forKey: AppleSpeechLanguage.settingsKey)
             .flatMap(AppleSpeechLanguage.init(rawValue:)) ?? .default
+    }
+
+    var selectedNemotronLanguage: NemotronLanguage {
+        UserDefaults.standard.string(forKey: NemotronLanguage.settingsKey)
+            .flatMap(NemotronLanguage.init(rawValue:)) ?? .default
     }
 
     /// Loads a saved transcript from disk if it isn't already in memory.
@@ -454,7 +460,11 @@ final class TranscriptionService {
         case .whisper:
             return whisper
         case .nemotron:
-            return nemotron
+            let languages = selectedNemotronLanguage
+            if let engine = nemotronEngines[languages] { return engine }
+            let engine = NemotronEngine(modelsURL: modelsURL, languages: languages)
+            nemotronEngines[languages] = engine
+            return engine
         case .apple:
             if let engine = appleEngines[language] { return engine }
             let engine = AppleSpeechEngine(language: language)

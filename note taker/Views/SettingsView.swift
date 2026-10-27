@@ -10,6 +10,8 @@ struct SettingsView: View {
     private var engine: TranscriptionEngineKind = .default
     @AppStorage(AppleSpeechLanguage.settingsKey)
     private var appleLanguage: AppleSpeechLanguage = .default
+    @AppStorage(NemotronLanguage.settingsKey)
+    private var nemotronLanguage: NemotronLanguage = .default
 
     var body: some View {
         Form {
@@ -26,6 +28,14 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case .nemotron:
+                Picker("Language", selection: $nemotronLanguage) {
+                    ForEach(NemotronLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                Text("With both languages, the text shown while someone talks may drift, but each saved line is decoded again in Turkish or English, whichever the model heard. Pick one language for calls that stay in it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Text("Text appears while people are still talking, and settles when they pause. Needs Apple Silicon; the model (about 665 MB) is downloaded the first time. Everything runs on this Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

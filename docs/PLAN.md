@@ -14,8 +14,12 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
   - Whisper (WhisperKit, large-v3-turbo) with voice detection: the default for mixed
     Turkish and English. A line appears after each pause.
   - Nemotron 3.5 ASR Streaming Multilingual 0.6B (FluidAudio, CoreML on the Neural
-    Engine, 1120 ms chunks, language auto-detected): streams natively, so text shows
-    while people talk and settles at the pause. Apple Silicon only, about 665 MB.
+    Engine, 1120 ms chunks): streams natively, so text shows while people talk and
+    settles at the pause. Apple Silicon only, about 665 MB. Its "auto" language mode
+    drifts between languages mid-sentence, so saved text is always pinned: Turkish
+    only, English only, or Turkish and English (an "auto" decoder streams the shown
+    text and names the language; at the pause the utterance is decoded again pinned
+    to English if it heard English, otherwise Turkish).
   - Apple Speech (SpeechAnalyzer): one language per recording.
 - Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)
   as it is captured. Silence never reaches the speech model, which saves CPU and
