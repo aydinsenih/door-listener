@@ -15,7 +15,13 @@ struct SettingsView: View {
         Form {
             Picker("Transcription engine", selection: $engine) {
                 ForEach(TranscriptionEngineKind.allCases) { kind in
-                    Text(kind.displayName).tag(kind)
+                    VStack(alignment: .leading) {
+                        Text(kind.displayName)
+                        Text(kind.memoryEstimate)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(kind)
                 }
             }
             .pickerStyle(.radioGroup)

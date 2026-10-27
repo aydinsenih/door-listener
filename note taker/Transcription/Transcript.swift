@@ -25,6 +25,17 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
         }
     }
 
+    /// Rough memory the model takes while loaded, from the model sizes and the
+    /// speech-swift and WhisperKit measurements. Shown in Settings.
+    var memoryEstimate: String {
+        switch self {
+        case .whisper: "about 2 GB of RAM"
+        case .qwenSmall: "about 1 GB of RAM"
+        case .qwenLarge: "about 2.5 GB of RAM"
+        case .apple: "little RAM, runs in macOS"
+        }
+    }
+
     var shortName: String {
         switch self {
         case .whisper: "Whisper"
