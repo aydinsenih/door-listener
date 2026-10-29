@@ -7,7 +7,10 @@ import Foundation
 
 nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case whisper
-    case nemotron
+    case qwenSmall
+    case qwenLarge
+    case bilingual
+    case balbal
     case apple
 
     static let settingsKey = "transcriptionEngine"
@@ -18,15 +21,34 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
     var displayName: String {
         switch self {
         case .whisper: "Whisper with voice detection (mixed Turkish and English)"
-        case .nemotron: "Nemotron streaming (mixed Turkish and English, text while people talk)"
+        case .qwenSmall: "Qwen3-ASR 0.6B with voice detection (faster)"
+        case .qwenLarge: "Qwen3-ASR 1.7B with voice detection (more accurate)"
+        case .bilingual: "Turkish + English: balbal and Nemotron (English only), picked per sentence"
+        case .balbal: "balbal (Turkish only, lightweight)"
         case .apple: "Apple Speech (one language)"
+        }
+    }
+
+    /// Rough memory the model takes while loaded, from the model sizes and the
+    /// speech-swift and WhisperKit measurements. Shown in Settings.
+    var memoryEstimate: String {
+        switch self {
+        case .whisper: "about 2 GB of RAM"
+        case .qwenSmall: "about 1 GB of RAM"
+        case .qwenLarge: "about 2.5 GB of RAM"
+        case .bilingual: "about 1.5 GB of RAM"
+        case .balbal: "about 200 MB of RAM"
+        case .apple: "little RAM, runs in macOS"
         }
     }
 
     var shortName: String {
         switch self {
         case .whisper: "Whisper"
-        case .nemotron: "Nemotron"
+        case .qwenSmall: "Qwen3-ASR 0.6B"
+        case .qwenLarge: "Qwen3-ASR 1.7B"
+        case .bilingual: "balbal + Nemotron"
+        case .balbal: "balbal"
         case .apple: "Apple Speech"
         }
     }
