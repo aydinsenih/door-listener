@@ -15,6 +15,10 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
     Turkish and English. A line appears after each pause.
   - Qwen3-ASR 0.6B or 1.7B (speech-swift, MLX) with the same voice detection. Detects
     the language per sentence. No word timings, so each sentence is one line.
+  - balbal-v1 (ONNX, Turkish only, about 200 MB of RAM), decoded greedily without its KenLM.
+  - Turkish + English: per sentence, SpeechBrain VoxLingua107 language ID routes Turkish to
+    balbal and English to Parakeet TDT v3; short or unclear sentences run both and the more
+    confident result wins.
   - Apple Speech (SpeechAnalyzer): one language per recording.
 - Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)
   as it is captured. Silence never reaches the speech model, which saves CPU and

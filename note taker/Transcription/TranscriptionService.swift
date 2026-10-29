@@ -79,6 +79,8 @@ final class TranscriptionService {
     @ObservationIgnored private let whisper: WhisperEngine
     @ObservationIgnored private let qwenSmall: QwenEngine
     @ObservationIgnored private let qwenLarge: QwenEngine
+    @ObservationIgnored private let balbal: BalbalEngine
+    @ObservationIgnored private let bilingual: BilingualEngine
     @ObservationIgnored private let diarizer: SpeakerDiarizer
     @ObservationIgnored private var appleEngines: [AppleSpeechLanguage: AppleSpeechEngine] = [:]
     @ObservationIgnored private var liveSessions: [UUID: LiveSession] = [:]
@@ -120,6 +122,8 @@ final class TranscriptionService {
         whisper = WhisperEngine(modelsURL: modelsURL)
         qwenSmall = QwenEngine(size: .small, modelsURL: modelsURL)
         qwenLarge = QwenEngine(size: .large, modelsURL: modelsURL)
+        balbal = BalbalEngine(modelsURL: modelsURL)
+        bilingual = BilingualEngine(turkish: balbal, modelsURL: modelsURL)
         diarizer = SpeakerDiarizer(modelsURL: modelsURL)
     }
 
@@ -459,6 +463,10 @@ final class TranscriptionService {
             return qwenSmall
         case .qwenLarge:
             return qwenLarge
+        case .balbal:
+            return balbal
+        case .bilingual:
+            return bilingual
         case .apple:
             if let engine = appleEngines[language] { return engine }
             let engine = AppleSpeechEngine(language: language)

@@ -9,6 +9,8 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
     case whisper
     case qwenSmall
     case qwenLarge
+    case bilingual
+    case balbal
     case apple
 
     static let settingsKey = "transcriptionEngine"
@@ -21,6 +23,8 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
         case .whisper: "Whisper with voice detection (mixed Turkish and English)"
         case .qwenSmall: "Qwen3-ASR 0.6B with voice detection (faster)"
         case .qwenLarge: "Qwen3-ASR 1.7B with voice detection (more accurate)"
+        case .bilingual: "Turkish + English: balbal and Parakeet, picked per sentence"
+        case .balbal: "balbal (Turkish only, lightweight)"
         case .apple: "Apple Speech (one language)"
         }
     }
@@ -32,6 +36,8 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
         case .whisper: "about 2 GB of RAM"
         case .qwenSmall: "about 1 GB of RAM"
         case .qwenLarge: "about 2.5 GB of RAM"
+        case .bilingual: "about 1.1 GB of RAM"
+        case .balbal: "about 200 MB of RAM"
         case .apple: "little RAM, runs in macOS"
         }
     }
@@ -41,6 +47,8 @@ nonisolated enum TranscriptionEngineKind: String, Codable, CaseIterable, Identif
         case .whisper: "Whisper"
         case .qwenSmall: "Qwen3-ASR 0.6B"
         case .qwenLarge: "Qwen3-ASR 1.7B"
+        case .bilingual: "balbal + Parakeet"
+        case .balbal: "balbal"
         case .apple: "Apple Speech"
         }
     }
