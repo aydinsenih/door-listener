@@ -36,7 +36,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case .bilingual:
-                Text("Each sentence goes to balbal if it's Turkish or Parakeet if it's English, picked by a small language detection model. Short or unclear sentences go through both, and the more confident result is kept. A sentence that switches language halfway goes to one model. The models (about 0.9 GB together) are downloaded the first time. Everything runs on this Mac.")
+                Text("Each sentence goes to balbal if it's Turkish or Nemotron 3.5, pinned to English, if it's English, picked by a small language detection model. Short or unclear sentences go through both, and the more confident result is kept. A sentence that switches language halfway goes to one model. The models (about 0.8 GB together) are downloaded the first time. Everything runs on this Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case .balbal:

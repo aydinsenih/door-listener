@@ -23,7 +23,7 @@ nonisolated final class BalbalModel {
     nonisolated struct Result {
         var text: String
         var words: [RawWord]
-        /// Geometric mean probability of the emitted tokens, 0 to 1, the way Parakeet scores itself.
+        /// Geometric mean probability of the emitted tokens, 0 to 1, the way speech-swift models score themselves.
         var confidence: Float
     }
 

@@ -12,7 +12,7 @@
 		6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2C6308F240000DD69F2 /* onnxruntime */; };
 		6517B2CB308F240000DD69F2 /* Qwen3ASR in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2CC308F240000DD69F2 /* Qwen3ASR */; };
 		6517B2D0308F240000DD69F2 /* SpeechLanguageID in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2D1308F240000DD69F2 /* SpeechLanguageID */; };
-		6517B2CE308F240000DD69F2 /* ParakeetASR in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2CF308F240000DD69F2 /* ParakeetASR */; };
+		6517B2CE308F240000DD69F2 /* NemotronStreamingASR in Frameworks */ = {isa = PBXBuildFile; productRef = 6517B2CF308F240000DD69F2 /* NemotronStreamingASR */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,7 +37,7 @@
 				6517B2C5308F240000DD69F2 /* onnxruntime in Frameworks */,
 				6517B2CB308F240000DD69F2 /* Qwen3ASR in Frameworks */,
 				6517B2D0308F240000DD69F2 /* SpeechLanguageID in Frameworks */,
-				6517B2CE308F240000DD69F2 /* ParakeetASR in Frameworks */,
+				6517B2CE308F240000DD69F2 /* NemotronStreamingASR in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +85,7 @@
 				6517B2C6308F240000DD69F2 /* onnxruntime */,
 				6517B2CC308F240000DD69F2 /* Qwen3ASR */,
 				6517B2D1308F240000DD69F2 /* SpeechLanguageID */,
-				6517B2CF308F240000DD69F2 /* ParakeetASR */,
+				6517B2CF308F240000DD69F2 /* NemotronStreamingASR */,
 			);
 			productName = "note taker";
 			productReference = 6517B2A6308F23CD00DD69F2 /* note taker.app */;
@@ -402,10 +402,10 @@
 			package = 6517B2CD308F240000DD69F2 /* XCRemoteSwiftPackageReference "speech-swift" */;
 			productName = Qwen3ASR;
 		};
-		6517B2CF308F240000DD69F2 /* ParakeetASR */ = {
+		6517B2CF308F240000DD69F2 /* NemotronStreamingASR */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6517B2CD308F240000DD69F2 /* XCRemoteSwiftPackageReference "speech-swift" */;
-			productName = ParakeetASR;
+			productName = NemotronStreamingASR;
 		};
 		6517B2D1308F240000DD69F2 /* SpeechLanguageID */ = {
 			isa = XCSwiftPackageProductDependency;

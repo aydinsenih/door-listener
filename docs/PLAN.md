@@ -17,7 +17,7 @@ then transcribes them on-device. Turkish and English, often mixed in one recordi
     the language per sentence. No word timings, so each sentence is one line.
   - balbal-v1 (ONNX, Turkish only, about 200 MB of RAM), decoded greedily without its KenLM.
   - Turkish + English: per sentence, SpeechBrain VoxLingua107 language ID routes Turkish to
-    balbal and English to Parakeet TDT v3; short or unclear sentences run both and the more
+    balbal and English to Nemotron 3.5 streaming pinned to en-US; short or unclear sentences run both and the more
     confident result wins.
   - Apple Speech (SpeechAnalyzer): one language per recording.
 - Each track goes through Silero VAD v5 (bundled ONNX model, run with ONNX Runtime)

@@ -4,11 +4,11 @@
 //
 
 import Foundation
-import ParakeetASR
+import NemotronStreamingASR
 import SpeechLanguageID
 
 /// Turkish and English with two specialist models: each utterance goes to balbal (Turkish)
-/// or Parakeet TDT v3 (English), picked by a small language ID model (SpeechBrain
+/// or Nemotron 3.5 streaming pinned to English, picked by a small language ID model (SpeechBrain
 /// VoxLingua107). When language ID isn't sure, both models run and the more confident wins.
 actor BilingualEngine: SpeechEngine {
     /// Language ID needs a couple of seconds of speech to be reliable.
@@ -18,7 +18,7 @@ actor BilingualEngine: SpeechEngine {
 
     private let turkish: BalbalEngine
     private let modelsURL: URL
-    private var english: ParakeetASRModel?
+    private var english: NemotronStreamingASRModel?
     private var languageID: SpeechLanguageIdentifier?
 
     init(turkish: BalbalEngine, modelsURL: URL) {
@@ -86,28 +86,34 @@ actor BilingualEngine: SpeechEngine {
 
     private func transcribeEnglish(_ utterance: Utterance) async throws -> (segments: [RawSegment], confidence: Float) {
         let model = try await loadEnglish { _ in }
-        let raw = try model.transcribeAudio(
-            utterance.samples,
-            sampleRate: Int(SpeechSegmenter.sampleRate),
-            language: "en"
-        )
-        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Pinned to English: the language slot is one-hot, so it can't wander into other
+        // languages the way auto mode did.
+        let session = try model.createSession(language: "en-US")
+        // A little silence on both ends primes the streaming encoder's cache, so the first
+        // word isn't lost.
+        let padding = [Float](repeating: 0, count: Int(Self.englishPadding * SpeechSegmenter.sampleRate))
+        var partials = try session.pushAudio(padding + utterance.samples + padding)
+        partials += try session.finalize()
+        guard let result = partials.last(where: \.isFinal) ?? partials.last else { return ([], 0) }
+        let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return ([], 0) }
-        let words: [RawWord] = (model.lastWordConfidences ?? []).compactMap { word in
-            guard let start = word.startTime, let end = word.endTime else { return nil }
-            return RawWord(start: utterance.start + start, end: utterance.start + end, text: " " + word.word)
+        let words = result.words.map { word in
+            RawWord(
+                start: utterance.start + max(0, word.startTime - Self.englishPadding),
+                end: utterance.start + max(0, word.endTime - Self.englishPadding),
+                text: " " + word.text
+            )
         }
         let segment = RawSegment(start: utterance.start, end: utterance.end, text: text, words: words)
-        return ([segment], model.lastConfidence)
+        return ([segment], result.confidence)
     }
 
-    private func loadEnglish(onProgress: @escaping @Sendable (Double) -> Void) async throws -> ParakeetASRModel {
+    private static let englishPadding: TimeInterval = 0.1
+
+    private func loadEnglish(onProgress: @escaping @Sendable (Double) -> Void) async throws -> NemotronStreamingASRModel {
         if let english { return english }
-        let modelId = ParakeetASRModel.defaultModelId
-        let folder = try cacheFolder("parakeet", modelId: modelId)
-        let model = try await ParakeetASRModel.fromPretrained(
-            modelId: modelId,
-            cacheDir: folder,
+        // speech-swift keeps this one in its own cache, ~/Library/Caches/qwen3-speech.
+        let model = try await NemotronStreamingASRModel.fromPretrained(
             progressHandler: { fraction, _ in onProgress(fraction) }
         )
         // Core ML compiles the model on its first prediction; do it now, not mid-meeting.
